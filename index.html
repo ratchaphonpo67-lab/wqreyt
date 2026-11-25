@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detective Reading Quest - นักสืบจิ๋วไขคดีภาษาอังกฤษ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Kanit (Thai) & Fredoka (Playful English) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #fefce8;
+            background-image: radial-gradient(#fde047 1px, transparent 1px);
+            background-size: 24px 24px;
+            overflow-x: hidden;
+        }
+        .font-en {
+            font-family: 'Fredoka', 'Kanit', sans-serif;
+        }
+        /* Custom game button 3D bubble effect */
+        .btn-game {
+            transition: all 0.15s ease;
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.2);
+        }
+        .btn-game:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 0 rgba(0, 0, 0, 0.2);
+        }
+        .btn-game:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+        }
+        /* Suspect card eliminated state */
+        .suspect-eliminated {
+            opacity: 0.52;
+            filter: grayscale(75%);
+            transform: scale(0.97);
+        }
+        /* Stamp animation */
+        @keyframes stampIn {
+            0% { transform: scale(2.5) rotate(-18deg); opacity: 0; }
+            100% { transform: scale(1) rotate(-12deg); opacity: 1; }
+        }
+        .stamp-badge {
+            animation: stampIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.85); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.3s ease-out forwards;
+        }
+        /* Highlight vocabulary words in clues */
+        .clue-keyword {
+            background-color: #fef08a;
+            color: #854d0e;
+            padding: 0 6px;
+            border-radius: 6px;
+            font-weight: 600;
+            border-bottom: 2px solid #eab308;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+    <!-- ==================== TOP NAVBAR ==================== -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30 border-b-4 border-amber-400">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center text-2xl shadow-inner">
+                    🕵️‍♂️
+                </div>
+                <div>
+                    <h1 class="font-en text-lg sm:text-xl font-bold text-amber-300 leading-tight">Detective Reading Quest</h1>
+                    <p class="text-xs text-slate-300">นักสืบจิ๋วไขคดีภาษาอังกฤษ (ป.4–ป.6)</p>
+                </div>
+            </div>
+
+            <!-- Live HUD (Visible during gameplay) -->
+            <div id="game-hud" class="hidden flex items-center gap-2 sm:gap-4 text-sm sm:text-base">
+                <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1.5">
+                    <span class="text-amber-400">📁</span>
+                    <span id="hud-case" class="font-semibold">คดี 1/5</span>
+                </div>
+                <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1.5">
+                    <span class="text-yellow-400">⭐</span>
+                    <span id="hud-score" class="font-semibold">0</span>
+                </div>
+                <div id="hud-hearts" class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1" title="โอกาสตอบผิด">
+                    ❤️❤️❤️
+                </div>
+                <button onclick="toggleMute()" id="btn-mute" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl border border-slate-700 transition" title="เปิด/ปิดเสียงเอฟเฟกต์">
+                    🔊
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTAINER ==================== -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6 sm:py-8">
+
+        <!-- 1. START SCREEN -->
+        <section id="screen-start" class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl border-4 border-slate-900 p-6 sm:p-10 text-center animate-pop">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-amber-100 border-4 border-amber-400 text-6xl mb-4 animate-float shadow-md">
+                🔍
+            </div>
+            <h2 class="font-en text-3xl sm:text-4xl font-bold text-slate-900 mb-2">
+                Detective Reading Quest
+            </h2>
+            <p class="text-lg text-amber-600 font-semibold mb-6">
+                ภารกิจนักสืบจิ๋ว: อ่านเบาะแสภาษาอังกฤษ แล้วจับคนร้ายตัวจริง!
+            </p>
+
+            <!-- How to play box -->
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 text-left mb-6 space-y-3">
+                <h3 class="font-bold text-slate-800 flex items-center gap-2 text-base sm:text-lg">
+                    <span>📋</span> วิธีเล่นสำหรับนักสืบ
+                </h3>
+                <ul class="space-y-2 text-sm sm:text-base text-slate-700">
+                    <li class="flex items-start gap-2">
+                        <span class="bg-amber-400 text-slate-900 font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs mt-0.5">1</span>
+                        <span>อ่าน <strong>เบาะแสภาษาอังกฤษ (Clues)</strong> ให้ครบ สามารถกดปุ่ม <strong>🔊 ฟังเสียงอ่าน</strong> หรือ <strong>💡 ดูคำศัพท์</strong> เพื่อช่วยแปลได้</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="bg-amber-400 text-slate-900 font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs mt-0.5">2</span>
+                        <span>สังเกตภาพและข้อมูลของผู้ต้องสงสัย กดปุ่ม <strong>❌ ตัดออก</strong> กับคนที่ไม่ตรงตามเบาะแส</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="bg-amber-400 text-slate-900 font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs mt-0.5">3</span>
+                        <span>เมื่อมั่นใจแล้ว กดปุ่ม <strong>🚨 จับกุมคนนี้!</strong> เพื่อปิดคดีและสะสมคะแนน (มีทั้งหมด 5 คดี)</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Detective Name Input -->
+            <div class="mb-6 max-w-sm mx-auto">
+                <label for="player-name" class="block text-sm font-semibold text-slate-600 mb-1.5 text-left">
+                    ชื่อนักสืบของคุณ (แสดงบนใบประกาศนียบัตร):
+                </label>
+                <input id="player-name" type="text" maxlength="24" placeholder="เช่น นักสืบต้นกล้า หรือ Detective Mint"
+                    class="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-amber-500 focus:outline-none text-base font-medium bg-slate-50">
+            </div>
+
+            <button onclick="startGame()" class="btn-game w-full sm:w-auto px-10 py-4 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-900 font-bold text-xl rounded-2xl border-2 border-slate-900">
+                🚀 เริ่มไขคดีแรกกันเลย!
+            </button>
+        </section>
+
+        <!-- 2. GAMEPLAY SCREEN -->
+        <section id="screen-game" class="hidden space-y-6">
+            <!-- Case Header Banner -->
+            <div class="bg-white rounded-3xl shadow-md border-2 border-slate-900 p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-start gap-4">
+                    <div id="case-icon" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-indigo-100 border-2 border-indigo-300 flex items-center justify-center text-3xl sm:text-4xl shrink-0">
+                        🏆
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span id="case-badge" class="bg-indigo-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">CASE 1</span>
+                            <span id="case-topic" class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">หมวด: เสื้อผ้าและสี</span>
+                        </div>
+                        <h2 id="case-title-en" class="font-en text-xl sm:text-2xl font-bold text-slate-900">The Missing Golden Trophy</h2>
+                        <p id="case-story-th" class="text-sm sm:text-base text-slate-600">ถ้วยรางวัลกีฬาสีหายไปจากห้องพักครู! ช่วยอ่านคำให้การพยานเพื่อหาตัวขโมยกันเถอะ</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 self-end md:self-center">
+                    <button onclick="toggleVocabHelper()" id="btn-vocab-toggle" class="btn-game px-4 py-2.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-2 border-emerald-600 font-semibold text-sm flex items-center gap-1.5">
+                        <span>💡</span> <span id="vocab-btn-text">เปิดคำศัพท์ช่วยแปล</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Clues Board -->
+            <div class="bg-slate-900 text-white rounded-3xl shadow-xl p-5 sm:p-6 border-4 border-amber-400">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h3 class="text-lg sm:text-xl font-bold text-amber-300 flex items-center gap-2">
+                        <span>📝</span> กระดานเบาะแส (Witness Clues)
+                    </h3>
+                    <button onclick="speakAllClues()" class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold text-sm flex items-center gap-1.5 transition">
+                        <span>🔊</span> ฟังเบาะแสทั้งหมด
+                    </button>
+                </div>
+
+                <!-- Clue Cards Container -->
+                <div id="clues-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Populated via JS -->
+                </div>
+
+                <!-- Vocab Helper Drawer (Hidden by default) -->
+                <div id="vocab-drawer" class="hidden mt-4 pt-4 border-t border-slate-700 animate-pop">
+                    <p class="text-xs text-amber-300 font-semibold mb-2">📚 คลังคำศัพท์สำคัญในคดีนี้ (Vocabulary Helper):</p>
+                    <div id="vocab-chips" class="flex flex-wrap gap-2">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suspects Section -->
+            <div>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <span>👥</span> รายชื่อผู้ต้องสงสัย (Suspects)
+                    </h3>
+                    <p class="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-300">
+                        💡 คลิก <strong>"❌ ตัดออก"</strong> เพื่อคัดคนที่ไม่ใช่ หรือ <strong>"🚨 จับกุม"</strong> เมื่อมั่นใจ
+                    </p>
+                </div>
+
+                <div id="suspects-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. END / CERTIFICATE SCREEN -->
+        <section id="screen-end" class="hidden max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl border-4 border-amber-400 p-6 sm:p-10 text-center animate-pop">
+            <div class="text-6xl mb-3">🏆</div>
+            <p class="text-sm font-bold tracking-widest uppercase text-amber-600 mb-1">Certificate of Achievement</p>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+                ยินดีด้วย! ปิดคดีครบทั้งหมดแล้ว
+            </h2>
+            <p class="text-slate-600 mb-6">
+                ขอมอบตำแหน่งยอดนักสืบให้แก่ <strong id="cert-name" class="text-indigo-700 text-xl">นักสืบจิ๋ว</strong>
+            </p>
+
+            <!-- Rank & Stats -->
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-5 mb-6">
+                <div id="cert-rank" class="text-2xl font-bold text-amber-700 mb-4">🌟 ยอดนักสืบระดับตำนาน</div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-sm">
+                        <div class="text-xs text-slate-500">คะแนนรวม</div>
+                        <div id="cert-score" class="text-2xl font-bold text-slate-900">0</div>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-sm">
+                        <div class="text-xs text-slate-500">ไขคดีสำเร็จ</div>
+                        <div id="cert-solved" class="text-2xl font-bold text-emerald-600">5/5</div>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-sm">
+                        <div class="text-xs text-slate-500">ความแม่นยำ</div>
+                        <div id="cert-accuracy" class="text-2xl font-bold text-indigo-600">100%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Learned Words Summary -->
+            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-left mb-6">
+                <h3 class="font-bold text-slate-800 text-sm mb-2">📖 คำศัพท์ภาษาอังกฤษที่ได้ฝึกในภารกิจนี้:</h3>
+                <div id="cert-vocab-summary" class="flex flex-wrap gap-1.5 text-xs">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <button onclick="resetGame()" class="btn-game px-8 py-3.5 bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-bold text-lg rounded-2xl border-2 border-slate-900">
+                🔄 เล่นใหม่อีกครั้ง
+            </button>
+        </section>
+
+    </main>
+
+    <!-- ==================== MODAL OVERLAY (FEEDBACK / RESULT) ==================== -->
+    <div id="modal-overlay" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div id="modal-box" class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border-4 border-slate-900 shadow-2xl text-center animate-pop">
+            <div id="modal-icon" class="text-6xl mb-3">🎉</div>
+            <h3 id="modal-title" class="text-2xl font-bold text-slate-900 mb-2">จับคนร้ายสำเร็จ!</h3>
+            <p id="modal-message" class="text-slate-600 mb-4 text-sm sm:text-base"></p>
+            <div id="modal-explanation" class="hidden bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-left text-sm text-slate-700 mb-5 space-y-1.5">
+                <!-- Explanation bullets -->
+            </div>
+            <button id="modal-btn" class="btn-game w-full py-3.5 rounded-2xl font-bold text-lg border-2 border-slate-900">
+                ไปคดีต่อไป ➡️
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="text-center py-4 text-xs text-slate-500">
+        นวัตกรรมการศึกษาวิชาภาษาอังกฤษ ระดับชั้น ป.4–ป.6 • Detective Reading Quest
+    </footer>
+
+    <!-- ==================== GAME LOGIC SCRIPT ==================== -->
+    <script>
+        // ==========================================
+        // 1. AUDIO & SPEECH SYNTHESIS (TONE.JS + TTS)
+        // ==========================================
+        let isMuted = false;
+        let synth = null;
+
+        /**
+         * Initialize Tone.js synthesizer safely on user gesture
+         */
+        function initAudio() {
+            try {
+                if (!synth && window.Tone) {
+                    Tone.start();
+                    synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                }
+            } catch (e) {
+                console.warn("Audio init skipped:", e);
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted) return;
+            try {
+                initAudio();
+                if (!synth) return;
+                const now = Tone.now();
+                if (type === 'click') {
+                    synth.triggerAttackRelease("C5", "32n", now);
+                } else if (type === 'cross') {
+                    synth.triggerAttackRelease("A3", "16n", now);
+                } else if (type === 'correct') {
+                    synth.triggerAttackRelease(["C5", "E5", "G5"], "8n", now);
+                    synth.triggerAttackRelease(["E5", "G5", "C6"], "4n", now + 0.15);
+                } else if (type === 'wrong') {
+                    synth.triggerAttackRelease("G3", "8n", now);
+                    synth.triggerAttackRelease("Eb3", "4n", now + 0.15);
+                } else if (type === 'win') {
+                    const notes = ["C5", "D5", "E5", "G5", "C6"];
+                    notes.forEach((n, i) => synth.triggerAttackRelease(n, "8n", now + i * 0.1));
+                }
+            } catch (e) {
+                // Fail gracefully if audio context is blocked
+            }
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('btn-mute').textContent = isMuted ? '🔇' : '🔊';
+            if (isMuted && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        /**
+         * Read English text aloud using Web Speech API
+         */
+        function speakEnglish(text) {
+            if (isMuted) return;
+            try {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.88; // Slightly slower for elementary students
+                    utterance.pitch = 1.05;
+                    window.speechSynthesis.speak(utterance);
+                }
+            } catch (e) {
+                console.warn("Speech synthesis unavailable:", e);
+            }
+        }
+
+        function speakAllClues() {
+            const currentCase = CASES[gameState.currentCaseIndex];
+            if (!currentCase) return;
+            const fullText = currentCase.clues.map((c, i) => `Clue ${i + 1}. ${c.raw}`).join(' ');
+            speakEnglish(fullText);
+        }
+
+        // ==========================================
+        // 2. CUSTOM SVG AVATAR GENERATOR
+        // ==========================================
+        /**
+         * Generates a crisp, playful SVG portrait matching suspect attributes
+         */
+        function generateAvatarSVG(s) {
+            const skin = s.skin || '#fde68a';
+            const hair = s.hairColor || '#451a03';
+            const shirt = s.shirtHex || '#3b82f6';
+
+            // Back hair for long/pigtails styles
+            let backHair = '';
+            if (s.hairStyle === 'long') {
+                backHair = `<path d="M26 50 Q22 88 30 98 L90 98 Q98 88 94 50 Z" fill="${hair}"/>`;
+            } else if (s.hairStyle === 'pigtails') {
+                backHair = `
+                    <circle cx="22" cy="54" r="14" fill="${hair}"/>
+                    <circle cx="98" cy="54" r="14" fill="${hair}"/>
+                `;
+            }
+
+            // Front hair
+            let frontHair = `<path d="M32 48 Q32 22 60 22 Q88 22 88 48 Q75 34 60 36 Q45 34 32 48 Z" fill="${hair}"/>`;
+            if (s.hairStyle === 'curly') {
+                frontHair = `
+                    <circle cx="38" cy="34" r="10" fill="${hair}"/>
+                    <circle cx="52" cy="26" r="11" fill="${hair}"/>
+                    <circle cx="68" cy="26" r="11" fill="${hair}"/>
+                    <circle cx="82" cy="34" r="10" fill="${hair}"/>
+                `;
+            }
+
+            // Hat overlay
+            let hatSVG = '';
+            if (s.hat === 'red-cap' || s.hat === 'blue-cap' || s.hat === 'green-cap') {
+                const capColor = s.hat === 'red-cap' ? '#ef4444' : (s.hat === 'blue-cap' ? '#2563eb' : '#16a34a');
+                const brimColor = s.hat === 'red-cap' ? '#b91c1c' : (s.hat === 'blue-cap' ? '#1d4ed8' : '#15803d');
+                hatSVG = `
+                    <path d="M30 40 Q32 14 60 14 Q88 14 90 40 Z" fill="${capColor}" stroke="#1e293b" stroke-width="2.5"/>
+                    <path d="M26 38 Q60 32 102 40 Q94 46 60 44 Q32 44 26 38 Z" fill="${brimColor}" stroke="#1e293b" stroke-width="2"/>
+                `;
+            } else if (s.hat === 'yellow-hat') {
+                hatSVG = `
+                    <ellipse cx="60" cy="36" rx="40" ry="9" fill="#eab308" stroke="#1e293b" stroke-width="2.5"/>
+                    <path d="M36 35 Q38 14 60 14 Q82 14 84 35 Z" fill="#facc15" stroke="#1e293b" stroke-width="2.5"/>
+                    <rect x="37" y="29" width="46" height="5" fill="#ca8a04"/>
+                `;
+            }
+
+            // Glasses overlay
+            let glassesSVG = '';
+            if (s.glasses) {
+                glassesSVG = `
+                    <g stroke="#1e293b" stroke-width="3" fill="rgba(255,255,255,0.45)">
+                        <rect x="37" y="49" width="18" height="13" rx="4"/>
+                        <rect x="65" y="49" width="18" height="13" rx="4"/>
+                        <line x1="55" y1="55" x2="65" y2="55"/>
+                        <line x1="31" y1="53" x2="37" y2="54"/>
+                        <line x1="83" y1="54" x2="89" y2="53"/>
+                    </g>
+                `;
+            }
+
+            return `
+            <svg viewBox="0 0 120 120" class="w-28 h-28 mx-auto drop-shadow-sm" aria-label="${s.name}">
+                <!-- Soft Background Circle -->
+                <circle cx="60" cy="60" r="56" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="3"/>
+                ${backHair}
+                <!-- Shirt / Body -->
+                <path d="M22 112 Q26 84 60 84 Q94 84 98 112 Z" fill="${shirt}" stroke="#1e293b" stroke-width="2.5"/>
+                <!-- Collar -->
+                <path d="M48 85 L60 96 L72 85" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+                <!-- Neck -->
+                <rect x="52" y="74" width="16" height="14" rx="4" fill="${skin}"/>
+                <!-- Ears -->
+                <circle cx="31" cy="56" r="6" fill="${skin}" stroke="#1e293b" stroke-width="2"/>
+                <circle cx="89" cy="56" r="6" fill="${skin}" stroke="#1e293b" stroke-width="2"/>
+                <!-- Face -->
+                <rect x="33" y="28" width="54" height="52" rx="24" fill="${skin}" stroke="#1e293b" stroke-width="2.5"/>
+                <!-- Cheeks -->
+                <circle cx="42" cy="63" r="4" fill="#fca5a5" opacity="0.6"/>
+                <circle cx="78" cy="63" r="4" fill="#fca5a5" opacity="0.6"/>
+                <!-- Eyes -->
+                <circle cx="46" cy="55" r="3.5" fill="#1e293b"/>
+                <circle cx="74" cy="55" r="3.5" fill="#1e293b"/>
+                <!-- Smile -->
+                <path d="M51 67 Q60 74 69 67" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+                ${frontHair}
+                ${glassesSVG}
+                ${hatSVG}
+            </svg>`;
+        }
+
+        // ==========================================
+        // 3. EDUCATIONAL CASE DATA (5 CASES, GRADE 4-6)
+        // ==========================================
+        const CASES = [
+            {
+                id: 1,
+                icon: "🏆",
+                topic: "เสื้อผ้าและสี (Clothes & Colors)",
+                titleEn: "The Missing Golden Trophy",
+                storyTh: "ถ้วยรางวัลกีฬาสีหายไปจากห้องพักครู! พยานเห็นคนร้ายวิ่งผ่านหน้าห้อง อ่านเบาะแสเพื่อหาตัวขโมยกันเถอะ",
+                clues: [
+                    {
+                        raw: "The thief is wearing a red cap.",
+                        html: `The thief is wearing a <span class="clue-keyword">red cap</span>.`
+                    },
+                    {
+                        raw: "The thief is wearing glasses.",
+                        html: `The thief is wearing <span class="clue-keyword">glasses</span>.`
+                    },
+                    {
+                        raw: "The thief has a blue shirt.",
+                        html: `The thief has a <span class="clue-keyword">blue shirt</span>.`
+                    }
+                ],
+                vocab: [
+                    { en: "thief", th: "ขโมย" },
+                    { en: "wearing", th: "กำลังสวมใส่" },
+                    { en: "red cap", th: "หมวกแก๊ปสีแดง" },
+                    { en: "glasses", th: "แว่นตา" },
+                    { en: "blue shirt", th: "เสื้อสีฟ้า" }
+                ],
+                culpritId: "ben",
+                explanation: [
+                    "• <strong>red cap</strong> = สวมหมวกแก๊ปสีแดง (ตัด Mia ออก)",
+                    "• <strong>glasses</strong> = สวมแว่นตา (ตัด Tom ออก)",
+                    "• <strong>blue shirt</strong> = ใส่เสื้อสีฟ้า (ตัด Leo ที่ใส่เสื้อสีเขียวออก) จึงเหลือ <strong>Ben</strong>!"
+                ],
+                suspects: [
+                    { id: "tom", name: "Tom", gender: "Boy (He)", skin: "#fed7aa", hairColor: "#78350f", hairStyle: "short", hat: "red-cap", glasses: false, shirtHex: "#3b82f6", shirtName: "Blue shirt", place: "Gym", hobby: "Soccer ⚽" },
+                    { id: "leo", name: "Leo", gender: "Boy (He)", skin: "#fde68a", hairColor: "#1e293b", hairStyle: "curly", hat: "red-cap", glasses: true, shirtHex: "#22c55e", shirtName: "Green shirt", place: "Gym", hobby: "Running 🏃" },
+                    { id: "ben", name: "Ben", gender: "Boy (He)", skin: "#ffedd5", hairColor: "#451a03", hairStyle: "short", hat: "red-cap", glasses: true, shirtHex: "#3b82f6", shirtName: "Blue shirt", place: "Gym", hobby: "Basketball 🏀" },
+                    { id: "mia", name: "Mia", gender: "Girl (She)", skin: "#fef3c7", hairColor: "#7c2d12", hairStyle: "long", hat: "blue-cap", glasses: true, shirtHex: "#3b82f6", shirtName: "Blue shirt", place: "Gym", hobby: "Tennis 🎾" }
+                ]
+            },
+            {
+                id: 2,
+                icon: "🎂",
+                topic: "สถานที่ สรรพนาม และงานอดิเรก",
+                titleEn: "The Stolen Chocolate Cake",
+                storyTh: "เค้กช็อกโกแลตของห้อง ป.5 หายไปก่อนเวลาพักเที่ยง! ใครกันนะที่แอบกินเค้ก?",
+                clues: [
+                    {
+                        raw: "The culprit was in the canteen.",
+                        html: `The culprit was in the <span class="clue-keyword">canteen</span>.`
+                    },
+                    {
+                        raw: "She is wearing a yellow shirt.",
+                        html: `<span class="clue-keyword">She</span> is wearing a <span class="clue-keyword">yellow shirt</span>.`
+                    },
+                    {
+                        raw: "She likes reading books.",
+                        html: `She likes <span class="clue-keyword">reading books</span>.`
+                    }
+                ],
+                vocab: [
+                    { en: "canteen", th: "โรงอาหาร" },
+                    { en: "She", th: "เธอ (ผู้หญิง)" },
+                    { en: "yellow shirt", th: "เสื้อสีเหลือง" },
+                    { en: "likes", th: "ชอบ" },
+                    { en: "reading books", th: "อ่านหนังสือ" }
+                ],
+                culpritId: "anna",
+                explanation: [
+                    "• <strong>in the canteen</strong> = อยู่ที่โรงอาหาร (ตัด Lily ที่อยู่ Library ออก)",
+                    "• <strong>She + yellow shirt</strong> = เป็นผู้หญิงใส่เสื้อสีเหลือง (ตัด Max ที่เป็นผู้ชาย และ Sara ที่ใส่เสื้อสีชมพูออก)",
+                    "• <strong>reading books</strong> = ชอบอ่านหนังสือ ตรงกับ <strong>Anna</strong> ทุกข้อ!"
+                ],
+                suspects: [
+                    { id: "anna", name: "Anna", gender: "Girl (She)", skin: "#ffedd5", hairColor: "#78350f", hairStyle: "pigtails", hat: "none", glasses: false, shirtHex: "#eab308", shirtName: "Yellow shirt", place: "Canteen", hobby: "Reading books 📚" },
+                    { id: "max", name: "Max", gender: "Boy (He)", skin: "#fed7aa", hairColor: "#1e293b", hairStyle: "short", hat: "none", glasses: false, shirtHex: "#eab308", shirtName: "Yellow shirt", place: "Canteen", hobby: "Reading books 📚" },
+                    { id: "lily", name: "Lily", gender: "Girl (She)", skin: "#fef3c7", hairColor: "#451a03", hairStyle: "long", hat: "none", glasses: true, shirtHex: "#eab308", shirtName: "Yellow shirt", place: "Library", hobby: "Reading books 📚" },
+                    { id: "sara", name: "Sara", gender: "Girl (She)", skin: "#fde68a", hairColor: "#1e293b", hairStyle: "long", hat: "none", glasses: false, shirtHex: "#ec4899", shirtName: "Pink shirt", place: "Canteen", hobby: "Playing guitar 🎸" }
+                ]
+            },
+            {
+                id: 3,
+                icon: "🐱",
+                topic: "ประโยคปฏิเสธ (Not) และเวลา",
+                titleEn: "Who Owns the Lost Kitten?",
+                storyTh: "พบลูกแมวสีส้มหลงทางอยู่หน้าโรงเรียน! ช่วยอ่านเบาะแสเพื่อตามหาเจ้าของตัวจริงให้เจอกันเถอะ",
+                clues: [
+                    {
+                        raw: "The owner is not wearing glasses.",
+                        html: `The owner is <span class="clue-keyword">not wearing glasses</span>.`
+                    },
+                    {
+                        raw: "The owner has a green backpack.",
+                        html: `The owner has a <span class="clue-keyword">green backpack</span>.`
+                    },
+                    {
+                        raw: "The owner was at the playground at 3:00 PM.",
+                        html: `The owner was at the <span class="clue-keyword">playground</span> at 3:00 PM.`
+                    }
+                ],
+                vocab: [
+                    { en: "owner", th: "เจ้าของ" },
+                    { en: "not wearing", th: "ไม่ได้สวมใส่" },
+                    { en: "green backpack", th: "กระเป๋าเป้สีเขียว" },
+                    { en: "playground", th: "สนามเด็กเล่น" }
+                ],
+                culpritId: "emma",
+                explanation: [
+                    "• <strong>not wearing glasses</strong> = ไม่ได้ใส่แว่นตา (ตัด Jack ที่ใส่แว่นออก)",
+                    "• <strong>green backpack</strong> = มีกระเป๋าเป้สีเขียว (ตัด Noah ที่ถือลูกบอลออก)",
+                    "• <strong>at the playground</strong> = อยู่ที่สนามเด็กเล่น (ตัด Chloe ที่อยู่ Art Room ออก) เจ้าของคือ <strong>Emma</strong>!"
+                ],
+                suspects: [
+                    { id: "jack", name: "Jack", gender: "Boy (He)", skin: "#fed7aa", hairColor: "#451a03", hairStyle: "short", hat: "none", glasses: true, shirtHex: "#f97316", shirtName: "Orange shirt", place: "Playground (3:00 PM)", hobby: "Green backpack 🎒" },
+                    { id: "emma", name: "Emma", gender: "Girl (She)", skin: "#ffedd5", hairColor: "#9a3412", hairStyle: "long", hat: "none", glasses: false, shirtHex: "#22c55e", shirtName: "Green shirt", place: "Playground (3:00 PM)", hobby: "Green backpack 🎒" },
+                    { id: "noah", name: "Noah", gender: "Boy (He)", skin: "#fde68a", hairColor: "#1e293b", hairStyle: "curly", hat: "none", glasses: false, shirtHex: "#3b82f6", shirtName: "Blue shirt", place: "Playground (3:00 PM)", hobby: "Soccer ball ⚽" },
+                    { id: "chloe", name: "Chloe", gender: "Girl (She)", skin: "#fef3c7", hairColor: "#78350f", hairStyle: "pigtails", hat: "none", glasses: false, shirtHex: "#a855f7", shirtName: "Purple shirt", place: "Art Room (3:00 PM)", hobby: "Green backpack 🎒" }
+                ]
+            },
+            {
+                id: 4,
+                icon: "🔬",
+                topic: "การเชื่อมโยง 4 เบาะแส (ป.5–ป.6)",
+                titleEn: "Mystery in the Science Lab",
+                storyTh: "น้ำยาทดลองสีรุ้งในห้องวิทยาศาสตร์เปลี่ยนสีเองได้! ใครคือคนที่เข้าไปทดลองตอน 10 โมงเช้า?",
+                clues: [
+                    {
+                        raw: "The suspect is wearing a purple shirt.",
+                        html: `The suspect is wearing a <span class="clue-keyword">purple shirt</span>.`
+                    },
+                    {
+                        raw: "He was not in the library at 10:00 AM.",
+                        html: `<span class="clue-keyword">He</span> was <span class="clue-keyword">not in the library</span> at 10:00 AM.`
+                    },
+                    {
+                        raw: "He is holding an umbrella.",
+                        html: `He is holding an <span class="clue-keyword">umbrella</span>.`
+                    },
+                    {
+                        raw: "He is wearing a yellow hat.",
+                        html: `He is wearing a <span class="clue-keyword">yellow hat</span>.`
+                    }
+                ],
+                vocab: [
+                    { en: "purple shirt", th: "เสื้อสีม่วง" },
+                    { en: "He", th: "เขา (ผู้ชาย)" },
+                    { en: "not in the library", th: "ไม่ได้อยู่ในห้องสมุด" },
+                    { en: "umbrella", th: "ร่ม" },
+                    { en: "yellow hat", th: "หมวกสีเหลือง" }
+                ],
+                culpritId: "sam",
+                explanation: [
+                    "• <strong>He</strong> = เป็นผู้ชาย (ตัด Grace ที่เป็นผู้หญิงออก)",
+                    "• <strong>not in the library</strong> = ไม่ได้อยู่ในห้องสมุด (ตัด Dan ออก)",
+                    "• <strong>yellow hat</strong> = สวมหมวกสีเหลือง (ตัด Luke ที่ไม่ได้สวมหมวกออก) คำตอบคือ <strong>Sam</strong>!"
+                ],
+                suspects: [
+                    { id: "dan", name: "Dan", gender: "Boy (He)", skin: "#fed7aa", hairColor: "#1e293b", hairStyle: "short", hat: "yellow-hat", glasses: false, shirtHex: "#a855f7", shirtName: "Purple shirt", place: "Library (10:00 AM)", hobby: "Umbrella ☂️" },
+                    { id: "sam", name: "Sam", gender: "Boy (He)", skin: "#ffedd5", hairColor: "#78350f", hairStyle: "curly", hat: "yellow-hat", glasses: false, shirtHex: "#a855f7", shirtName: "Purple shirt", place: "Science Lab (10:00 AM)", hobby: "Umbrella ☂️" },
+                    { id: "grace", name: "Grace", gender: "Girl (She)", skin: "#fef3c7", hairColor: "#451a03", hairStyle: "long", hat: "yellow-hat", glasses: false, shirtHex: "#a855f7", shirtName: "Purple shirt", place: "Science Lab (10:00 AM)", hobby: "Umbrella ☂️" },
+                    { id: "luke", name: "Luke", gender: "Boy (He)", skin: "#fde68a", hairColor: "#1e293b", hairStyle: "short", hat: "none", glasses: true, shirtHex: "#a855f7", shirtName: "Purple shirt", place: "Science Lab (10:00 AM)", hobby: "Umbrella ☂️" }
+                ]
+            },
+            {
+                id: 5,
+                icon: "🎪",
+                topic: "ภารกิจสุดท้าย: รวมทุกทักษะ!",
+                titleEn: "The Grand School Festival",
+                storyTh: "คดีใหญ่ประจำปี! มีแขกลึกลับทิ้งบัตรของขวัญไว้ในงานโรงเรียน ช่วยตามหาตัวแขกลึกลับคนนี้ให้เจอ!",
+                clues: [
+                    {
+                        raw: "The mystery guest is wearing a green shirt and glasses.",
+                        html: `The mystery guest is wearing a <span class="clue-keyword">green shirt</span> and <span class="clue-keyword">glasses</span>.`
+                    },
+                    {
+                        raw: "She was at the music room at 1:30 PM.",
+                        html: `<span class="clue-keyword">She</span> was at the <span class="clue-keyword">music room</span> at 1:30 PM.`
+                    },
+                    {
+                        raw: "She is not wearing a hat.",
+                        html: `She is <span class="clue-keyword">not wearing a hat</span>.`
+                    },
+                    {
+                        raw: "Her favorite hobby is painting.",
+                        html: `Her favorite hobby is <span class="clue-keyword">painting</span>.`
+                    }
+                ],
+                vocab: [
+                    { en: "mystery guest", th: "แขกลึกลับ" },
+                    { en: "green shirt", th: "เสื้อสีเขียว" },
+                    { en: "music room", th: "ห้องดนตรี" },
+                    { en: "not wearing a hat", th: "ไม่ได้สวมหมวก" },
+                    { en: "painting", th: "วาดภาพระบายสี" }
+                ],
+                culpritId: "zoe",
+                explanation: [
+                    "• <strong>She</strong> = เป็นผู้หญิง (ตัด Owen ออก)",
+                    "• <strong>not wearing a hat</strong> = ไม่ได้สวมหมวก (ตัด Bella ที่ใส่หมวกสีแดงออก)",
+                    "• <strong>painting</strong> = ชอบวาดภาพระบายสี (ตัด Ruby ที่ชอบเล่นกีตาร์ออก) แขกลึกลับคือ <strong>Zoe</strong>!"
+                ],
+                suspects: [
+                    { id: "bella", name: "Bella", gender: "Girl (She)", skin: "#ffedd5", hairColor: "#78350f", hairStyle: "long", hat: "red-cap", glasses: true, shirtHex: "#22c55e", shirtName: "Green shirt", place: "Music Room (1:30 PM)", hobby: "Painting 🎨" },
+                    { id: "zoe", name: "Zoe", gender: "Girl (She)", skin: "#fef3c7", hairColor: "#1e293b", hairStyle: "pigtails", hat: "none", glasses: true, shirtHex: "#22c55e", shirtName: "Green shirt", place: "Music Room (1:30 PM)", hobby: "Painting 🎨" },
+                    { id: "ruby", name: "Ruby", gender: "Girl (She)", skin: "#fed7aa", hairColor: "#9a3412", hairStyle: "long", hat: "none", glasses: true, shirtHex: "#22c55e", shirtName: "Green shirt", place: "Music Room (1:30 PM)", hobby: "Playing guitar 🎸" },
+                    { id: "owen", name: "Owen", gender: "Boy (He)", skin: "#fde68a", hairColor: "#451a03", hairStyle: "short", hat: "none", glasses: true, shirtHex: "#22c55e", shirtName: "Green shirt", place: "Music Room (1:30 PM)", hobby: "Painting 🎨" }
+                ]
+            }
+        ];
+
+        // ==========================================
+        // 4. GAME STATE MANAGEMENT
+        // ==========================================
+        let gameState = {
+            playerName: "นักสืบจิ๋ว",
+            currentCaseIndex: 0,
+            score: 0,
+            hearts: 3,
+            totalAttempts: 0,
+            correctAttempts: 0,
+            eliminatedIds: new Set(),
+            vocabOpen: false
+        };
+
+        // ==========================================
+        // 5. CORE GAME FUNCTIONS
+        // ==========================================
+        function startGame() {
+            initAudio();
+            playSound('click');
+
+            const inputName = document.getElementById('player-name').value.trim();
+            gameState.playerName = inputName || "นักสืบจิ๋ว";
+            gameState.currentCaseIndex = 0;
+            gameState.score = 0;
+            gameState.hearts = 3;
+            gameState.totalAttempts = 0;
+            gameState.correctAttempts = 0;
+
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-end').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('game-hud').classList.remove('hidden');
+
+            loadCase(0);
+        }
+
+        function resetGame() {
+            playSound('click');
+            document.getElementById('screen-end').classList.add('hidden');
+            document.getElementById('screen-start').classList.remove('hidden');
+            document.getElementById('game-hud').classList.add('hidden');
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-case').textContent = `คดี ${gameState.currentCaseIndex + 1}/${CASES.length}`;
+            document.getElementById('hud-score').textContent = gameState.score;
+            let heartsStr = '';
+            for (let i = 0; i < 3; i++) {
+                heartsStr += i < gameState.hearts ? '❤️' : '🖤';
+            }
+            document.getElementById('hud-hearts').textContent = heartsStr;
+        }
+
+        function loadCase(index) {
+            const c = CASES[index];
+            gameState.eliminatedIds = new Set();
+            gameState.hearts = 3; // Refresh hearts per case so students stay encouraged
+            gameState.vocabOpen = false;
+
+            // Reset vocab drawer UI
+            document.getElementById('vocab-drawer').classList.add('hidden');
+            document.getElementById('vocab-btn-text').textContent = 'เปิดคำศัพท์ช่วยแปล';
+
+            updateHUD();
+
+            // Populate case header
+            document.getElementById('case-icon').textContent = c.icon;
+            document.getElementById('case-badge').textContent = `CASE ${c.id}`;
+            document.getElementById('case-topic').textContent = `หมวด: ${c.topic}`;
+            document.getElementById('case-title-en').textContent = c.titleEn;
+            document.getElementById('case-story-th').textContent = c.storyTh;
+
+            // Populate Clues
+            const cluesList = document.getElementById('clues-list');
+            cluesList.innerHTML = '';
+            c.clues.forEach((clue, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-800 border border-slate-700 rounded-2xl p-4 flex items-center justify-between gap-3';
+                card.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-400 text-slate-900 font-bold w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm">
+                            ${idx + 1}
+                        </span>
+                        <p class="font-en text-base sm:text-lg text-white leading-relaxed">${clue.html}</p>
+                    </div>
+                    <button onclick="speakEnglish('${clue.raw.replace(/'/g, "\\'")}')"
+                        class="shrink-0 w-10 h-10 rounded-xl bg-slate-700 hover:bg-amber-400 hover:text-slate-900 text-amber-300 flex items-center justify-center transition"
+                        title="ฟังเสียงอ่านภาษาอังกฤษ">
+                        🔊
+                    </button>
+                `;
+                cluesList.appendChild(card);
+            });
+
+            // Populate Vocab Helper
+            const vocabChips = document.getElementById('vocab-chips');
+            vocabChips.innerHTML = '';
+            c.vocab.forEach(v => {
+                const chip = document.createElement('span');
+                chip.className = 'bg-slate-800 border border-amber-400/50 text-sm px-3 py-1 rounded-xl text-slate-100';
+                chip.innerHTML = `<strong class="font-en text-amber-300">${v.en}</strong> = ${v.th}`;
+                vocabChips.appendChild(chip);
+            });
+
+            // Populate Suspects
+            renderSuspects(c);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderSuspects(c) {
+            const grid = document.getElementById('suspects-grid');
+            grid.innerHTML = '';
+
+            c.suspects.forEach(s => {
+                const isEliminated = gameState.eliminatedIds.has(s.id);
+                const card = document.createElement('div');
+                card.id = `suspect-card-${s.id}`;
+                card.className = `relative bg-white rounded-3xl border-3 border-slate-900 shadow-lg p-4 flex flex-col justify-between transition-all duration-200 border-2 ${isEliminated ? 'suspect-eliminated' : 'hover:-translate-y-1'}`;
+
+                card.innerHTML = `
+                    <!-- Eliminated Stamp Overlay -->
+                    ${isEliminated ? `
+                        <div class="stamp-badge pointer-events-none absolute top-14 left-1/2 -translate-x-1/2 z-10 border-4 border-red-600 text-red-600 bg-white/90 px-3 py-1 rounded-xl font-bold text-sm tracking-wider shadow">
+                            ❌ ตัดออกแล้ว
+                        </div>
+                    ` : ''}
+
+                    <div>
+                        <!-- Name & Gender Header -->
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-en text-xl font-bold text-slate-900">${s.name}</h4>
+                            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
+                                ${s.gender}
+                            </span>
+                        </div>
+
+                        <!-- Avatar SVG -->
+                        <div class="my-2">
+                            ${generateAvatarSVG(s)}
+                        </div>
+
+                        <!-- Profile Info Tags -->
+                        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 space-y-1.5 text-sm mb-4">
+                            <div class="flex items-center gap-2">
+                                <span>📍</span>
+                                <span class="font-en font-semibold text-slate-700">${s.place}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span>✨</span>
+                                <span class="font-en font-semibold text-slate-700">${s.hobby}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="toggleEliminate('${s.id}')"
+                            class="py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition ${
+                                isEliminated
+                                ? 'bg-slate-200 border-slate-400 text-slate-700 hover:bg-slate-300'
+                                : 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100'
+                            }">
+                            ${isEliminated ? '↩️ ยกเลิก' : '❌ ตัดออก'}
+                        </button>
+                        <button onclick="accuseSuspect('${s.id}')"
+                            class="btn-game py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm bg-amber-400 hover:bg-amber-300 text-slate-900 border-2 border-slate-900">
+                            🚨 จับกุม!
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleVocabHelper() {
+            playSound('click');
+            gameState.vocabOpen = !gameState.vocabOpen;
+            const drawer = document.getElementById('vocab-drawer');
+            const btnText = document.getElementById('vocab-btn-text');
+            if (gameState.vocabOpen) {
+                drawer.classList.remove('hidden');
+                btnText.textContent = 'ซ่อนคำศัพท์ช่วยแปล';
+            } else {
+                drawer.classList.add('hidden');
+                btnText.textContent = 'เปิดคำศัพท์ช่วยแปล';
+            }
+        }
+
+        function toggleEliminate(suspectId) {
+            playSound('cross');
+            if (gameState.eliminatedIds.has(suspectId)) {
+                gameState.eliminatedIds.delete(suspectId);
+            } else {
+                gameState.eliminatedIds.add(suspectId);
+            }
+            renderSuspects(CASES[gameState.currentCaseIndex]);
+        }
+
+        function accuseSuspect(suspectId) {
+            const currentCase = CASES[gameState.currentCaseIndex];
+            const suspect = currentCase.suspects.find(s => s.id === suspectId);
+            gameState.totalAttempts++;
+
+            if (suspectId === currentCase.culpritId) {
+                // CORRECT!
+                playSound('correct');
+                gameState.correctAttempts++;
+                // Score based on remaining hearts
+                const earnedPoints = 100 + (gameState.hearts * 20);
+                gameState.score += earnedPoints;
+                updateHUD();
+
+                const isLastCase = gameState.currentCaseIndex === CASES.length - 1;
+                showModal({
+                    icon: "🎉",
+                    title: `เก่งมาก! คือ ${suspect.name} จริง ๆ ด้วย!`,
+                    message: `คุณไขคดีสำเร็จและได้รับ +${earnedPoints} คะแนน`,
+                    explanation: currentCase.explanation,
+                    btnText: isLastCase ? "🏆 ดูใบประกาศนียบัตร" : "➡️ ไปคดีต่อไป",
+                    btnClass: "bg-emerald-400 hover:bg-emerald-300 text-slate-900",
+                    onConfirm: () => {
+                        closeModal();
+                        if (isLastCase) {
+                            showEndScreen();
+                        } else {
+                            gameState.currentCaseIndex++;
+                            loadCase(gameState.currentCaseIndex);
+                        }
+                    }
+                });
+            } else {
+                // WRONG!
+                playSound('wrong');
+                gameState.hearts = Math.max(0, gameState.hearts - 1);
+                updateHUD();
+
+                if (gameState.hearts === 0) {
+                    // Out of hearts on this case -> give explanation and let them retry or move on
+                    showModal({
+                        icon: "💡",
+                        title: `ยังไม่ใช่นะ! ${suspect.name} ไม่ตรงกับเบาะแส`,
+                        message: "หัวใจในคดีนี้หมดแล้ว ลองดูคำใบ้แล้วเริ่มไขคดีนี้อีกครั้งนะ นักสืบไม่ยอมแพ้!",
+                        explanation: [
+                            "• ลองกดปุ่ม <strong>💡 เปิดคำศัพท์ช่วยแปล</strong> ด้านบน",
+                            "• ค่อย ๆ เช็คทีละประโยค แล้วกด <strong>❌ ตัดออก</strong> กับคนที่ไม่ตรงเงื่อนไข"
+                        ],
+                        btnText: "🔄 ลองไขคดีนี้อีกครั้ง",
+                        btnClass: "bg-amber-400 hover:bg-amber-300 text-slate-900",
+                        onConfirm: () => {
+                            closeModal();
+                            loadCase(gameState.currentCaseIndex);
+                        }
+                    });
+                } else {
+                    showModal({
+                        icon: "🤔",
+                        title: `เอ๊ะ! ยังไม่ใช่ ${suspect.name}`,
+                        message: `ข้อมูลของ ${suspect.name} ยังไม่ตรงกับเบาะแสทั้งหมด ลองอ่านเบาะแสและสังเกตภาพอีกทีนะ (เหลือหัวใจ ${gameState.hearts} ดวง)`,
+                        explanation: null,
+                        btnText: "🔍 กลับไปสืบต่อ",
+                        btnClass: "bg-amber-400 hover:bg-amber-300 text-slate-900",
+                        onConfirm: () => {
+                            closeModal();
+                        }
+                    });
+                }
+            }
+        }
+
+        // ==========================================
+        // 6. MODAL & END SCREEN
+        // ==========================================
+        function showModal({ icon, title, message, explanation, btnText, btnClass, onConfirm }) {
+            document.getElementById('modal-icon').textContent = icon;
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+
+            const expBox = document.getElementById('modal-explanation');
+            if (explanation && explanation.length > 0) {
+                expBox.innerHTML = `<div class="font-bold text-amber-800 mb-1">🔎 เฉลยการวิเคราะห์เบาะแส:</div>` +
+                    explanation.map(line => `<div>${line}</div>`).join('');
+                expBox.classList.remove('hidden');
+            } else {
+                expBox.classList.add('hidden');
+            }
+
+            const btn = document.getElementById('modal-btn');
+            btn.textContent = btnText;
+            btn.className = `btn-game w-full py-3.5 rounded-2xl font-bold text-lg border-2 border-slate-900 ${btnClass}`;
+            btn.onclick = onConfirm;
+
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+        }
+
+        function showEndScreen() {
+            playSound('win');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('game-hud').classList.add('hidden');
+            document.getElementById('screen-end').classList.remove('hidden');
+
+            const accuracy = gameState.totalAttempts > 0
+                ? Math.round((gameState.correctAttempts / gameState.totalAttempts) * 100)
+                : 100;
+
+            let rank = "🕵️‍♂️ นักสืบฝึกหัดยอดเยี่ยม";
+            if (accuracy >= 90) rank = "🌟 ยอดนักสืบระดับตำนาน (Master Detective)";
+            else if (accuracy >= 70) rank = "🏅 นักสืบมือโปร (Pro Detective)";
+
+            document.getElementById('cert-name').textContent = gameState.playerName;
+            document.getElementById('cert-rank').textContent = rank;
+            document.getElementById('cert-score').textContent = gameState.score;
+            document.getElementById('cert-solved').textContent = `${CASES.length}/${CASES.length}`;
+            document.getElementById('cert-accuracy').textContent = `${accuracy}%`;
+
+            // Collect all vocabulary learned
+            const vocabContainer = document.getElementById('cert-vocab-summary');
+            vocabContainer.innerHTML = '';
+            CASES.forEach(c => {
+                c.vocab.forEach(v => {
+                    const span = document.createElement('span');
+                    span.className = 'bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-slate-700';
+                    span.innerHTML = `<strong class="font-en text-indigo-700">${v.en}</strong> (${v.th})`;
+                    vocabContainer.appendChild(span);
+                });
+            });
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
